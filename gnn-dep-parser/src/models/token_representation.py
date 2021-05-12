@@ -6,10 +6,12 @@ from antu.io.vocabulary import Vocabulary
 from antu.io.ext_embedding_readers import glove_reader
 Indices = TypeVar("Indices", List[int], List[List[int]])
 
+import math
+
 
 class TokenRepresentation(object):
 
-    def __init__(self, model, cfg, vocabulary: Vocabulary):
+    def __init__(self, model, cfg, vocabulary: Vocabulary, include_pos=True):
 
         pc = model.add_subcollection()
         word_num = vocabulary.get_vocab_size('word')
@@ -32,6 +34,8 @@ class TokenRepresentation(object):
         self.pc, self.cfg = pc, cfg
         self.spec = (cfg, vocabulary)
 
+        self.include_pos = include_pos
+
     def __call__(self,
                  indexes: Dict[str, List[Indices]],
                  is_train=False) -> List[dy.Expression]:
@@ -39,6 +43,10 @@ class TokenRepresentation(object):
         batch_num = len(indexes['head'])
         vectors = []
         for i in range(len_s):
+            # print('----------------')
+            # print('I THINK SHOULD BE 5')
+            # print(len_s)
+            # print('----------------')
             # map token indexes -> vector
             w_idxes = [indexes['word']['word'][x][i] for x in range(batch_num)]
             g_idxes = [indexes['word']['glove'][x][i] for x in range(batch_num)]
@@ -60,7 +68,26 @@ class TokenRepresentation(object):
                 tm *= scale
                 w_vec *= dy.inputTensor(wm, batched=True)
                 t_vec *= dy.inputTensor(tm, batched=True)
-            vectors.append(dy.concatenate([w_vec, t_vec]))
+            
+            # create the positional embedding
+            if self.include_pos:
+                emb = [0 for i in range(200)]
+                for j in range(100):
+                    exponent = (2 * j) / 200
+                    expression = i / (10000**exponent)
+                    emb[2*j] = math.sin(expression)
+                    emb[2*j + 1] = math.cos(expression)
+                
+                #print(w_vec.dim())
+                #print(t_vec.dim())
+                emb_single_vec = dy.inputTensor(emb)
+
+                emb_vecs = dy.concatenate_to_batch([emb_single_vec for i in range(batch_num)])
+
+                vectors.append(dy.concatenate([w_vec, t_vec]) + emb_vecs)
+            else:
+                vectors.append(dy.concatenate([w_vec, t_vec]))
+
         return vectors
 
     @staticmethod

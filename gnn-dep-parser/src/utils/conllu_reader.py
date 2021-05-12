@@ -53,6 +53,7 @@ class PTBReader(DatasetReader):
         res = []
         for sentence in self._read(file_path):
             res.append(self.input_to_instance(sentence, indexers))
+
         return res
 
     @overrides
@@ -69,4 +70,5 @@ class PTBReader(DatasetReader):
             fields.append(IndexField('head', inputs[6]))
         if 'rel' in self.field_list:
             fields.append(TextField('rel', inputs[7], indexers['rel']))
+
         return Instance(fields)

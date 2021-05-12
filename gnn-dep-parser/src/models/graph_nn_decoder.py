@@ -13,6 +13,36 @@ import math
 def leaky_relu(x):
     return dy.bmax(.1*x, x)
 
+def is_tree_computed_for_sample(G):
+    g_shape = G.shape
+
+    n = g_shape[1]
+    M = [False]*n
+
+    def dfs_tree(u, v):
+        M[v] = True
+
+        return all(w==u or not M[w] and dfs_tree(v, w) for w in range(n) if G[v][w])
+
+    return dfs_tree(0, 0) and all(M)
+
+def is_tree_computed(G):    
+    g_shape = G.shape
+    # iterate over the batch
+    for i in range(g_shape[2]):
+        # check if sample is a tree
+        is_tree = is_tree_computed_for_sample(G[:,:,i])
+        if not is_tree:
+            return False
+    
+    return True
+    
+
+
+    
+
+
+
 
 class GraphNNDecoder(DependencyDecoder):
 
@@ -57,13 +87,28 @@ class GraphNNDecoder(DependencyDecoder):
         self.spec = (cfg, vocabulary)
 
     def __call__(self, inputs, masks, truth, iters, is_train=True, is_tree=True):
-        sent_len = len(inputs)
-        batch_size = inputs[0].dim()[1]
+        if type(inputs) == list:
+            sent_len = len(inputs)
+            batch_size = inputs[0].dim()[1]
+            X = dy.concatenate_cols(inputs)
+
+        else:
+            sent_len = inputs.dim()[0][0]
+            batch_size = inputs.dim()[1]
+            X = dy.transpose(inputs, [1, 0])
+ 
+        
+        
         flat_len = sent_len * batch_size
+        
+
+        #sent_len = len(inputs) 
+        #batch_size = inputs[0].dim()[1]
+        #flat_len = sent_len * batch_size
 
         # H -> hidden size, L -> sentence length, B -> batch size
         # ((H, L), B)
-        X = dy.concatenate_cols(inputs)
+        #X = dy.concatenate_cols(inputs)
         if is_train: X = dy.dropout_dim(X, 1, self.cfg.MLP_DROP)
         # A_H -> ARC MLP hidden size, R_H -> REL MLP hidden size
         # ((A_H, L), B)
@@ -129,6 +174,10 @@ class GraphNNDecoder(DependencyDecoder):
 
         # ((L, L), B)
         arc_mat = self.arc_attn_mat[-1](head_arc, dept_arc)/arc_norm-masks_2D
+
+        is_tree_computed_val = is_tree_computed(arc_mat.npvalue())
+        print(is_tree_computed_val)
+        exit(0)
         # ((L,), L*B)
         arc_mat = dy.reshape(arc_mat, (sent_len,), flat_len)
         # Predict Relation
@@ -137,6 +186,12 @@ class GraphNNDecoder(DependencyDecoder):
         # ((R_H,), L*B)
         dept_rel = dy.reshape(dept_rel, (self.rel_size,), flat_len)
         if is_train:
+            
+            # print(arc_mat.dim()) # ((3,), 300)
+            # arc_pred = np.argmax(arc_mat.npvalue(), 0)
+            # print(arc_pred.shape) # (300,)
+            # print(arc_pred) # all 0's and 1's
+
             # ((1,), L*B)
             arc_losses = dy.pickneglogsoftmax_batch(arc_mat, truth['head'])
             # (1,)
@@ -147,6 +202,7 @@ class GraphNNDecoder(DependencyDecoder):
             # ((R,), L*B)
             rel_mask = 1e9*dy.inputTensor(self.rel_mask)
             rel_mat = self.rel_attn(dept_rel, truth_rel)/rel_norm - rel_mask
+
             # Calculate Relation Classification Loss
             # ((1,), L*B)
             rel_losses = dy.pickneglogsoftmax_batch(rel_mat, truth['rel'])

@@ -18,6 +18,12 @@ import multiprocessing as mp
 random.seed(666)
 np.random.seed(666)
 
+from antu.nn.dynet.attention.multi_head import MultiHeadedAttention, MultiLayerMultiHeadAttention
+from antu.nn.dynet.attention.my_attention import ScaledDotProductAttention, MyMultiHeadAttention, LabelAttention, Encoder
+#from my_attention import ScaledDotProductAttention
+#from antu.nn.dynet.attention.biaffine import BiaffineAttention
+
+
 
 def main():
     # Configuration file processing
@@ -52,6 +58,9 @@ def main():
     from models.token_representation import TokenRepresentation
     from antu.nn.dynet.seq2seq_encoders import DeepBiRNNBuilder, orthonormal_VanillaLSTMBuilder
     from models.graph_nn_decoder import GraphNNDecoder
+    from models.jackknife_decoder import JackKnifeGraphNNDecoder
+
+    
 
     # Build the dataset of the training process
     # Build data reader
@@ -75,17 +84,42 @@ def main():
     # Build model
     # Parameter
     pc = dy.ParameterCollection()
-    trainer = dy.AdamTrainer(pc, cfg.LR, cfg.ADAM_BETA1, cfg.ADAM_BETA2, cfg.EPS)
+    LR = 0.0005
+    trainer = dy.AdamTrainer(pc, LR, cfg.ADAM_BETA1, cfg.ADAM_BETA2, cfg.EPS)
 
     # Token Representation Layer
-    token_repre = TokenRepresentation(pc, cfg, datasets.vocabulary)
+    token_repre = TokenRepresentation(pc, cfg, datasets.vocabulary, include_pos=True)
     # BiLSTM Encoder Layer
-    encoder = DeepBiRNNBuilder(pc, cfg.ENC_LAYERS, token_repre.token_dim,
-                               cfg.ENC_H_DIM, orthonormal_VanillaLSTMBuilder)
+    #encoder = BiaffineAttention()
+    #encoder = MultiHeadedAttention(pc, 10, token_repre.token_dim)
+    #encoder = MultiLayerMultiHeadAttention(pc, 10, token_repre.token_dim, num_layers=1)
+    #encoder = MyMultiHeadAttention(None, 6, token_repre.token_dim, 32, 32, model=pc)
+    
+    #encoder = LabelAttention(None, token_repre.token_dim, 128, 128, 112, 128, use_resdrop=True, q_as_matrix=False, residual_dropout=0.1, attention_dropout=0.1, d_positional=None, model=pc)
+    # encoder = Encoder(None, token_repre.token_dim,
+    #                 num_layers=1, num_heads=2, d_kv = 32, d_ff=1024, d_l=112,
+    #                 d_positional=None,
+    #                 num_layers_position_only=0,
+    #                 relu_dropout=0.1, residual_dropout=0.1, attention_dropout=0.1,
+    #                 use_lal=True,
+    #                 lal_d_kv=128,
+    #                 lal_d_proj=128,
+    #                 lal_resdrop=True,
+    #                 lal_pwff=True,
+    #                 lal_q_as_matrix=False,
+    #                 lal_partitioned=True,
+    #                 model=pc)
+    #encoder = ScaledDotProductAttention(pc, 10)
+    encoder = DeepBiRNNBuilder(pc, cfg.ENC_LAYERS, token_repre.token_dim, cfg.ENC_H_DIM, orthonormal_VanillaLSTMBuilder)
     # GNN Decoder Layer
     decoder = GraphNNDecoder(pc, cfg, datasets.vocabulary)
+
+    #decoder = JackKnifeGraphNNDecoder(pc, cfg, datasets.vocabulary)
     # PTB Evaluator
     my_eval = ScriptEvaluator(['Valid', 'Test'], datasets.vocabulary)
+
+    #dy.save(cfg.LAST_FILE, [token_repre, encoder, decoder])
+    #exit(0)
 
     # Build Training Batch
     def cmp(ins):
@@ -93,6 +127,21 @@ def main():
     train_batch = datasets.get_batches('train', cfg.TRAIN_BATCH_SIZE, True, cmp, True)
     valid_batch = list(datasets.get_batches('dev', cfg.TEST_BATCH_SIZE, False, cmp, False))
     test_batch = list(datasets.get_batches('test', cfg.TEST_BATCH_SIZE, False, cmp, False))
+
+    #print('-----------------------')
+    # print('TRAIN BATCH IS: ')
+    # # print(train_batch)
+    # indexes, masks, truth = train_batch.__next__()
+    # print(indexes)
+    # print('------------------',end='\n\n\n\n\n\n\n')
+    # print(len(indexes))
+    # exit(0)
+    # exit(0)
+    # for k in indexes:
+    #     print(k)
+    #print(indexes)
+    #print(masks)
+
 
     # Train model
     BEST_DEV_LAS = BEST_DEV_UAS = BEST_ITER = 0
@@ -102,16 +151,29 @@ def main():
     SHA = os.popen('git log -1 | head -n 1 | cut -c 8-13').readline().rstrip()
     logger.info('Git SHA: %s' % SHA)
     while cnt_iter < cfg.MAX_ITER:
-        dy.renew_cg()
+        print(cnt_iter, cfg.MAX_ITER)
+        #dy.renew_cg()
+        dy.renew_cg(immediate_compute = True, check_validity = True)
         cnt_iter += 1
         indexes, masks, truth = train_batch.__next__()
         vectors = token_repre(indexes, True)
+        
+        
+
+        #vectors = encoder(vectors, np.array(masks['1D']).T)
+        
+        #print(vectors.npvalue)
+        #vectors= encoder(vectors, vectors, vectors, np.array(masks['1D']).T)
+        #vectors= encoder(vectors, vectors, vectors, np.array(masks['1D']).T, cfg.RNN_DROP)
+
         vectors = encoder(vectors, None, cfg.RNN_DROP, cfg.RNN_DROP, np.array(masks['1D']).T, False, True)
+       
         loss, part_loss = decoder(vectors, masks, truth, cnt_iter, True, True)
         for i, l in enumerate([loss]+part_loss):
             valid_loss[i].append(l.value())
         loss.backward()
-        trainer.learning_rate = cfg.LR*cfg.LR_DECAY**(max(cnt_iter, 0)/cfg.LR_ANNEAL)
+        trainer.learning_rate = LR*cfg.LR_DECAY**(max(cnt_iter, 0)/cfg.LR_ANNEAL)
+        #trainer.learning_rate = cfg.LR*cfg.LR_DECAY**(max(cnt_iter, 0)/cfg.LR_ANNEAL)
         trainer.update()
 
         if cnt_iter % cfg.VALID_ITER: continue
@@ -129,7 +191,12 @@ def main():
         for indexes, masks, truth in valid_batch:
             dy.renew_cg()
             vectors = token_repre(indexes, False)
-            vectors = encoder(vectors, None, cfg.RNN_DROP, cfg.RNN_DROP, np.array(masks['1D']).T, False, False)
+
+            vectors = encoder(vectors, np.array(masks['1D']).T)
+            #vectors= encoder(vectors, vectors, vectors, np.array(masks['1D']).T)
+            #vectors = encoder(vectors, vectors, vectors, np.array(masks['1D']).T, cfg.RNN_DROP)
+            #vectors = encoder(vectors, None, cfg.RNN_DROP, cfg.RNN_DROP, np.array(masks['1D']).T, False, False)
+
             pred = decoder(vectors, masks, None, cnt_iter, False, True)
             my_eval.add_truth('Valid', truth)
             my_eval.add_pred('Valid', pred)
@@ -144,7 +211,12 @@ def main():
         for indexes, masks, truth in test_batch:
             dy.renew_cg()
             vectors = token_repre(indexes, False)
-            vectors = encoder(vectors, None, cfg.RNN_DROP, cfg.RNN_DROP, np.array(masks['1D']).T, False, False)
+
+            vectors = encoder(vectors, np.array(masks['1D']).T)
+            #vectors= encoder(vectors, vectors, vectors, np.array(masks['1D']).T)
+            #vectors = encoder(vectors, vectors, vectors, np.array(masks['1D']).T, cfg.RNN_DROP)
+            #vectors = encoder(vectors, None, cfg.RNN_DROP, cfg.RNN_DROP, np.array(masks['1D']).T, False, False)
+
             pred = decoder(vectors, masks, None, cnt_iter, False, True)
             my_eval.add_truth('Test', truth)
             my_eval.add_pred('Test', pred)
@@ -158,7 +230,12 @@ def main():
     for indexes, masks, truth in test_batch:
         dy.renew_cg()
         vectors = token_repre(indexes, False)
-        vectors = encoder(vectors, None, cfg.RNN_DROP, cfg.RNN_DROP, np.array(masks['1D']).T, False, False)
+
+        vectors = encoder(vectors, np.array(masks['1D']).T)
+        #vectors= encoder(vectors, vectors, vectors, np.array(masks['1D']).T)
+        #vectors = encoder(vectors, vectors, vectors, np.array(masks['1D']).T, cfg.RNN_DROP)
+        #vectors = encoder(vectors, None, cfg.RNN_DROP, cfg.RNN_DROP, np.array(masks['1D']).T, False, False)
+
         pred = decoder(vectors, masks, None, 0, False, True)
         my_eval.add_truth('Test', truth)
         my_eval.add_pred('Test', pred)

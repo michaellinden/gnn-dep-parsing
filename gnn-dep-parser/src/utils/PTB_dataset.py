@@ -105,13 +105,20 @@ class PTBDataset:
 
         for name, setting in self.datasets_settings.items():
             self.datasets[name] = self.reader.read(setting.file_path)
+            # print('--------------- DATSET NAME --------------------')
+            # print(self.datasets[name][0])
+            # exit(0)
             if setting.is_train:
                 for ins in self.datasets[name]:
                     ins.count_vocab_items(counters)
         self.vocabulary.extend_from_counter(
             counters, min_count, no_pad_namespace, no_unk_namespace)
+        #print(self.vocabulary)
+        #exit(0)
         for name in self.datasets:
             for ins in self.datasets[name]:
+                # print('---------------------------------')
+                # print(name, ins)
                 ins.index_fields(self.vocabulary)
 
     def get_dataset(self, name: str) -> List[Instance]:
@@ -125,6 +132,7 @@ class PTBDataset:
         cmp: Callable[[Instance, Instance], int]=None,
         is_infinite: bool=False) -> List[List[int]]:
         #print(self.datasets[name])
+
         if ordered: self.datasets[name].sort(key=cmp)
 
         num = len(self.datasets[name]) # Number of Instances
@@ -141,16 +149,45 @@ class PTBDataset:
                 for beg in range(0, num, size):
                     ins_batch = self.datasets[name][beg: beg+size]
                     idx_batch = [ins.index_fields(self.vocabulary) for ins in ins_batch]
+                    #print('-------- IDX batch ------------------')
+                    #print(ins_batch[0])
+                    #print(idx_batch[0])
+                    #print(ins_batch)
+                    #exit(0)
                     indexes, masks, truth= shadow_padding(idx_batch, self.vocabulary)
+                    #print(indexes)
+                    #exit(0)
                     result.append((indexes, masks, truth))
                 self.is_padding[name] = True
                 self.paddataset[name] = result
             for indexes, masks, truth in self.paddataset[name]:
+                # print('BEFORE BATCH IS INSTANTIATED')
+                # print(indexes)
+                # print('--------------------------------------')
+                # print('')
+                # print('')
+                # print('')
+                # print('')
+                # print('')
+                # print(truth)
+                # exit(0)
+
                 yield indexes, masks, truth
 
         while is_infinite:
             random.shuffle(result)
             for indexes, masks, truth in result:
+                # print('-------------------------')
+                # print('')
+                # print('')
+                # print('')
+                # print('')
+                # print('ABOUT TO YIELD FROM IS INFINITE')
+                # print('')
+                # print('')
+                # print('')
+                # print(indexes)
+                # exit(0)
                 yield indexes, masks, truth
 
     # def build_batches(self, )
