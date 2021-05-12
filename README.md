@@ -1,23 +1,5 @@
 # GNN Dependency Parser
-The code of "Graph-based Dependency Parsing with Graph Neural Networks".
-
-
-
-## Requirements
-
-* `python`: 3.6.0
-* [`dynet`](https://dynet.readthedocs.io/en/latest/python.html): 2.0.0
-* [`antu`](https://github.com/JT-Ushio/antu): 0.0.5
-
-
-## Example log
-
-An example of [experiment log](https://github.com/JT-Ushio/gnn-dep-parsing-1/blob/master/gnn-dep-parser/exper.log).
-
-|  PTB-UAS   | PTB-LAS  |
-|  ----  | ----  |
-| 96.0455  | 94.3539 |
-
+The code of "Graph-based Dependency Parsing with Graph Neural Networks" with improvements using Label Attention, jacknifing, and greedy parsing.
 
 
 ## Training
@@ -71,20 +53,9 @@ $ cat data/dev.debug
 
 
 
-## Predict
-
-```bash
-$ cd src
-$ python predict.py --config_file ../configs/default.cfg --name PTB-Out(your experiment name) --gpu 0(your gpu id)
-```
 
 
 
-## Cite
-
-If you find our code is useful, please cite:
-
-```
 @inproceedings{ji-etal-2019-graph,
     title = "Graph-based Dependency Parsing with Graph Neural Networks",
     author = "Ji, Tao  and
@@ -99,5 +70,4 @@ If you find our code is useful, please cite:
     doi = "10.18653/v1/P19-1237",
     pages = "2475--2485",
 }
-```
 
