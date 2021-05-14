@@ -31,7 +31,7 @@ Before triggering the subcommands, please make sure that the data files must be 
 `dev_v3.3.0.conllu`
 `test_v3.3.0.conllu`
 
-Finally, the intial vector encodings for each word rely on the GloVe embeddings. This file is already included in the `data/` directory for convenience.
+Finally, the intial vector encodings for each word rely on the GloVe embeddings. This file cannot be uploaded due to github file size limitations in this repository. However, it can be downloaded [here](https://github.com/allenai/spv2/blob/master/model/glove.6B.100d.txt.gz)
 
 ```bash
 $ cat data/dev.debug 
