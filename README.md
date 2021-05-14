@@ -24,9 +24,9 @@ $ cp multi_head.py PATH_TO_ANTU/nn/dynet/attention/
 
 ```bash
 $ cd src
-$ python train.py --config_file ../configs/default.cfg --name ACL19(your experiment name) --gpu 0(your gpu id)
+$ python train.py --config_file ../configs/default.cfg --name EXPERIMENT_NAME --gpu 0(your gpu id)
 ```
-Before triggering the subcommands, please make sure that the data files must be in [CoNLL-U](https://universaldependencies.org/format.html) format. Here is an example.
+Before triggering the subcommands, please make sure that the data files must be in [CoNLL-U](https://universaldependencies.org/format.html) format. Here is an example. Due to licensing restrictions, I am not able to upload the Stanford conversion of the PennTreebank. However, this dependency parser will work for any CoNLL-U files.
 
 ```bash
 $ cat data/dev.debug 
