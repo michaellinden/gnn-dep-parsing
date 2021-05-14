@@ -34,7 +34,6 @@ Before triggering the subcommands, please make sure that the data files must be 
 Finally, the intial vector encodings for each word rely on the GloVe embeddings. This file cannot be uploaded due to github file size limitations in this repository. However, it can be downloaded [here](https://github.com/allenai/spv2/blob/master/model/glove.6B.100d.txt.gz) and the resulting file should remain zipped and placed in `gnn-dep-parser/data/`.
 
 ```bash
-$ cat data/dev.debug 
 1	Influential	_	JJ	JJ	_	2	amod	_	_
 2	members	_	NNS	NNS	_	10	nsubj	_	_
 3	of	_	IN	IN	_	2	prep	_	_
