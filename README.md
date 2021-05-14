@@ -26,7 +26,12 @@ $ cp multi_head.py PATH_TO_ANTU/nn/dynet/attention/
 $ cd src
 $ python train.py --config_file ../configs/default.cfg --name EXPERIMENT_NAME --gpu 0(your gpu id)
 ```
-Before triggering the subcommands, please make sure that the data files must be in [CoNLL-U](https://universaldependencies.org/format.html) format. Here is an example. Due to licensing restrictions, I am not able to upload the Stanford conversion of the PennTreebank. However, this dependency parser will work for any CoNLL-U files.
+Before triggering the subcommands, please make sure that the data files must be in [CoNLL-U](https://universaldependencies.org/format.html) format. Here is an example. Due to licensing restrictions, I am not able to upload the Stanford conversion of the PennTreebank. However, this dependency parser will work for any CoNLL-U files. In particular, the files should be placed in `data/` with the following names:
+`train_v3.3.0.conllu`
+`dev_v3.3.0.conllu`
+`test_v3.3.0.conllu`
+
+Finally, the intial vector encodings for each word rely on the GloVe embeddings. This file is already included in the `data/` directory for convenience.
 
 ```bash
 $ cat data/dev.debug 
