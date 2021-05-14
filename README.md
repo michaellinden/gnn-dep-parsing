@@ -1,6 +1,24 @@
 # GNN Dependency Parser
 The code of "Graph-based Dependency Parsing with Graph Neural Networks" with improvements using Label Attention, jacknifing, and greedy parsing.
 
+## Setup
+```bash
+$ pip install antu==0.0.5a0
+$ pip install dyNET==2.1
+```
+Once `antu` has been successfuly installed, 4 custom files from my project must be injected into the library. First, find the directory where `antu` is located by running the following commands in the python cli
+```python
+import antu, os
+os.path.dirname(antu.__file__)
+```
+Then, run the following commands:
+```bash
+$ cp feed_forward.py PATH_TO_ANTU/nn/dynet/modules/
+$ cp linear.py PATH_TO_ANTU/nn/dynet/modules/
+$ cp my_attention.py PATH_TO_ANTU/nn/dynet/attention/
+$ cp multi_head.py PATH_TO_ANTU/nn/dynet/attention/
+```
+
 
 ## Training
 
